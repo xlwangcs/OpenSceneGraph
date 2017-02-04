@@ -83,6 +83,27 @@ TextBase::~TextBase()
 {
 }
 
+void TextBase::accept(osg::NodeVisitor& nv)
+{
+    if (!nv.validNodeMask(*this)) return;
+
+    OSG_NOTICE<<"TextBase::accept()"<<std::endl;
+
+    nv.pushOntoNodePath(this);
+
+    for(osg::NodeList::iterator itr = _children.begin();
+        itr != _children.end();
+        ++itr)
+    {
+        (*itr)->accept(nv);
+    }
+
+    nv.apply(*this);
+
+    nv.popFromNodePath();
+}
+
+
 void TextBase::setColor(const osg::Vec4& color)
 {
     _color = color;

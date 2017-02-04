@@ -36,6 +36,8 @@ public:
     virtual const char* className() const { return "TextBase"; }
     virtual const char* libraryName() const { return "osgText"; }
 
+    virtual void accept(osg::NodeVisitor& nv);
+
     void setColor(const osg::Vec4& color);
     const osg::Vec4& getColor() const { return _color; }
 
@@ -255,6 +257,15 @@ public:
     /** Set whether to use a mutex to ensure ref() and unref() are thread safe.*/
     virtual void setThreadSafeRefUnref(bool threadSafe);
 
+
+    /** Get the list of children used to render the text,*/
+    osg::NodeList& getChildren() { return _children; }
+
+    /** Get const the list of children used to render the text,*/
+    const osg::NodeList& getChildren() const { return _children; }
+
+
+
     /** Resize any per context GLObject buffers to specified size. */
     virtual void resizeGLObjectBuffers(unsigned int maxSize);
 
@@ -304,6 +315,7 @@ protected:
     unsigned int                            _lineCount;
 
 
+    osg::NodeList                           _children;
 
     // internal caches of the positioning of the text.
 
