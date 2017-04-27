@@ -23,7 +23,8 @@
 #include <osg/MatrixTransform>
 #include <osg/Texture2D>
 #include <osg/PolygonStipple>
-#include <osg/TriangleFunctor>
+#include <osg/TemplatePrimitiveFunctor>
+#include <osg/TemplatePrimitiveIndexFunctor>
 #include <osg/io_utils>
 
 #include <osgDB/ReadFile>
@@ -60,25 +61,72 @@
 
 struct NormalPrint
 {
-    void operator() (const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3) const
+    void operator() (const osg::Vec3& v1, bool) const
+    {
+        std::cout << "\rpoint("<<v1<<")"<<std::endl;
+    }
+
+    void operator() (const osg::Vec3& v1,const osg::Vec3& v2, bool) const
+    {
+        std::cout << "\tline("<<v1<<") ("<<v2<<")"<<std::endl;
+    }
+
+    void operator() (const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3, bool) const
     {
         osg::Vec3 normal = (v2-v1)^(v3-v2);
         normal.normalize();
-        std::cout << "\t("<<v1<<") ("<<v2<<") ("<<v3<<") "<<") normal ("<<normal<<")"<<std::endl;
+        std::cout << "\ttriangle("<<v1<<") ("<<v2<<") ("<<v3<<") "<<") normal ("<<normal<<")"<<std::endl;
+    }
+
+    void operator() (const osg::Vec3& v1,const osg::Vec3& v2,const osg::Vec3& v3,const osg::Vec3& v4, bool) const
+    {
+        osg::Vec3 normal = (v2-v1)^(v3-v2);
+        normal.normalize();
+        std::cout << "\tquad("<<v1<<") ("<<v2<<") ("<<v3<<") ("<<v4<<") "<<")"<<std::endl;
     }
 };
 
 // decompose Drawable primitives into triangles, print out these triangles and computed normals.
-void printTriangles(const std::string& name, osg::Drawable& drawable)
+void printPrimitives(const std::string& name, osg::Drawable& drawable)
 {
     std::cout<<name<<std::endl;
 
-    osg::TriangleFunctor<NormalPrint> tf;
+    osg::TemplatePrimitiveFunctor<NormalPrint> tf;
     drawable.accept(tf);
 
     std::cout<<std::endl;
 }
 
+struct PrimitiveIndexPrint
+{
+    void operator() (unsigned int p1) const
+    {
+        std::cout << "\tpoint("<<p1<<")"<<std::endl;
+    }
+    void operator() (unsigned int p1, unsigned int p2) const
+    {
+        std::cout << "\tline("<<p1<<", "<<p2<<")"<<std::endl;
+    }
+    void operator() (unsigned int p1, unsigned int p2, unsigned int p3) const
+    {
+        std::cout << "\ttriangle("<<p1<<", "<<p2<<", "<<p3<<")"<<std::endl;
+    }
+    void operator() (unsigned int p1, unsigned int p2, unsigned int p3, unsigned int p4) const
+    {
+        std::cout << "\tquad("<<p1<<", "<<p2<<", "<<p3<<", "<<p4<<")"<<std::endl;
+    }
+};
+
+// decompose Drawable primitives into triangles, print out these triangles and computed normals.
+void printPrimitiveIndices(const std::string& name, osg::Drawable& drawable)
+{
+    std::cout<<name<<std::endl;
+
+    osg::TemplatePrimitiveIndexFunctor<PrimitiveIndexPrint> pf;
+    drawable.accept(pf);
+
+    std::cout<<std::endl;
+}
 
 osg::Node* createScene()
 {
@@ -137,6 +185,7 @@ osg::Node* createScene()
         // to draw, and the third parameter is the number of points to draw.
         pointsGeom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POINTS,0,vertices->size()));
 
+        printPrimitiveIndices("POINTS indices", *pointsGeom);
 
         // add the points geometry to the geode.
         geode->addDrawable(pointsGeom);
@@ -180,6 +229,7 @@ osg::Node* createScene()
         // since we know up front,
         linesGeom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINES,0,8));
 
+        printPrimitiveIndices("LINES indices", *linesGeom);
 
         // add the points geometry to the geode.
         geode->addDrawable(linesGeom);
@@ -220,6 +270,7 @@ osg::Node* createScene()
         // since we know up front,
         linesGeom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_STRIP,0,5));
 
+        printPrimitiveIndices("LINE_STRIP indices", *linesGeom);
 
         // add the points geometry to the geode.
         geode->addDrawable(linesGeom);
@@ -265,6 +316,7 @@ osg::Node* createScene()
         // since we know up front,
         linesGeom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::LINE_LOOP,0,numCoords));
 
+        printPrimitiveIndices("LINE_LOOP indices", *linesGeom);
 
         // add the points geometry to the geode.
         geode->addDrawable(linesGeom);
@@ -335,7 +387,8 @@ osg::Node* createScene()
         // since we know up front,
         polyGeom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::POLYGON,0,numCoords));
 
-        printTriangles("Polygon",*polyGeom);
+        printPrimitiveIndices("POLYGON indices", *polyGeom);
+        printPrimitives("POLYGON vertices", *polyGeom);
 
         // add the points geometry to the geode.
         geode->addDrawable(polyGeom);
@@ -381,7 +434,8 @@ osg::Node* createScene()
         polyGeom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUADS,0,numCoords));
 
 
-        printTriangles("Quads",*polyGeom);
+        printPrimitiveIndices("QUADS indices", *polyGeom);
+        printPrimitives("QUADS vertices", *polyGeom);
 
         // add the points geometry to the geode.
         geode->addDrawable(polyGeom);
@@ -427,8 +481,8 @@ osg::Node* createScene()
         // since we know up front,
         polyGeom->addPrimitiveSet(new osg::DrawArrays(osg::PrimitiveSet::QUAD_STRIP,0,numCoords));
 
-
-        printTriangles("Quads strip",*polyGeom);
+        printPrimitiveIndices("QUAD_STRIP indices", *polyGeom);
+        printPrimitives("QUAD_STRIP vertices", *polyGeom);
 
         // add the points geometry to the geode.
         geode->addDrawable(polyGeom);
@@ -504,7 +558,8 @@ osg::Node* createScene()
         stateSet->setAttributeAndModes(polygonStipple,osg::StateAttribute::OVERRIDE|osg::StateAttribute::ON);
         #endif
 
-        printTriangles("Triangles/Strip/Fan",*polyGeom);
+        printPrimitiveIndices("Triangles/Strip/Fan indices", *polyGeom);
+        printPrimitives("Triangles/Strip/Fan vertices", *polyGeom);
 
         // add the points geometry to the geode.
         geode->addDrawable(polyGeom);
@@ -624,6 +679,7 @@ osg::Node* createBackground()
 
     polyGeom->setStateSet(stateset);
 
+    printPrimitiveIndices("DrawElementsUShort TRIANGLE_STRIP", *polyGeom);
 
     // create the Geode (Geometry Node) to contain all our osg::Geometry objects.
     osg::Geode* geode = new osg::Geode();
